@@ -3,12 +3,15 @@ Web VPython 3.2
 # from vpython import *
 
 Tapp = 0 # user determined torque applied
-bottle = cylinder(pos=vec(0, 0, 0), size=vec(1,1,1), axis=vec(0, 3, 0), color=color.white)
+bottle1 = cylinder(pos=vec(0, 0, 0), size=vec(1,1,1), axis=vec(0, 3, 0), color=color.white, opacity=0.5)
 percent_ice = 0 # percentage of total volume of the bottle
 init_height = 0 # initial height of flip
 
-#def com_ind(shape):
- #   x_cor = bottle.pos.x + bottle.size.x
+def com_ind(shape):
+    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=0.1)
+    return com
+com_ind(bottle1)
+bottle2 = compound([bottle1, com_ind(bottle1)])
 
 def torque (force, lever_arm):
     return cross(force, lever_arm)
