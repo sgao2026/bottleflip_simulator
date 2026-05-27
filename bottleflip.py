@@ -2,6 +2,9 @@
 
 from vpython import *
 
+t = 0
+dt = 0.01 # always increment time by 0.01
+
 Tapp = 0 # user determined torque applied
 bottle1 = cylinder(pos=vec(0, 0, 0), size=vec(1,1,1), axis=vec(0, 3, 0), color=color.white, opacity=0.5)
 percent_ice = 0 # percentage of total volume of the bottle
@@ -22,13 +25,37 @@ def com_pts (mass, pos):
         result = result + (m * p)
     return result / sum(mass)
 
-masses = (10, 0)
-poses = (vector(0,1,0), vector(1,0,0))
+def draw_parabola (obj, v_initial, theta = pi / 4, a_y = -10):
+    global t
+    obj.make_trail = True # makes trail
+    v_x = dot(v_initial, vec(1, 0, 0))
+    v_y = dot(v_initial, vec(0, 1, 0))
+    
+    x = dot(obj.pos, vec(1, 0, 0))
+    y = dot(obj.pos, vec(0, 1, 0))
+    
+    
+    while y > 0:
+        x = x + v_x * dt
+        
+        v_y = v_y + a_y * dt
+        y = y + v_y * dt
+        
+        obj.pos = vec(x, y, 0)
+        t = t + dt
+    return
 
-print(com_pts(masses, poses))
+ball = sphere(pos=vector(0,2,0), radius = 0.2, color=color.red)
 
 def go(): # runs simulation
+    run.text = 'Pause'
+    rate(1 / dt) # ensures animation
+    
+    draw_parabola(ball, v_initial=vec(5,5,0))
+    
+    run.text = 'Run'
     return
+
 def setSliders(evt): # user inputted torque applied
     global Tapp, percent_ice, init_height
     if evt.id == 'Tapp_slider':
@@ -43,7 +70,7 @@ def setSliders(evt): # user inputted torque applied
 #     print(str(evt.id) + " " + str(Tapp))
 
 # sliders + labels
-run = button(bind=go(), text='Run', pos=scene.title_anchor)
+run = button(bind=go, text='Run', pos=scene.title_anchor)
 
 scene.caption = "Simulation Properties\n\n"
 
