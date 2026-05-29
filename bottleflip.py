@@ -1,12 +1,12 @@
-Web VPython 3.2
+# Web VPython 3.2
 
-# from vpython import *
+from vpython import *
 
 scene.camera.pos = vec(0,0,2)
-t = 0
-dt = 0.01 # always increment time by 0.01
+t = 0.00
+dt = 0.02 # always increment time by 0.01
 flips = 0
-mass = 0.5
+m_bottle = 0.5
 
 Tapp = 0 # user determined torque applied
 bottle1 = cylinder(pos=vec(-10, 0, 0), size=vec(1,1,1), axis=vec(0, 3, 0), color=color.white, opacity=0.5)
@@ -29,15 +29,15 @@ def com_pts (mass, pos):
         result = result + (m * p)
     return result / sum(mass)
 
-def draw_parabola (obj, v_initial, theta = pi / 4, a_y = -10):
-    global t
-#     obj.make_trail = True # makes trail
+def draw_parabola (v_initial, theta = pi / 4, a_y = -10):
+    global t, bottle_com
     v_x = dot(v_initial, vec(1, 0, 0))
     v_y = dot(v_initial, vec(0, 1, 0))
     
-    x = dot(obj.pos, vec(1, 0, 0))
-    y = dot(obj.pos, vec(0, 1, 0))    
+    x = dot(bottle_com.pos, vec(1, 0, 0))
+    y = dot(bottle_com.pos, vec(0, 1, 0))
     
+    attach_trail(bottle_com, color=bottle_com.color)
     while y > 0:
         rate(1 / dt)
         x = x + v_x * dt
@@ -45,21 +45,23 @@ def draw_parabola (obj, v_initial, theta = pi / 4, a_y = -10):
         v_y = v_y + a_y * dt
         y = y + v_y * dt
         
-        obj.pos = vec(x, y, 0)
+        bottle_com.pos = vec(x, y, 0)
         
         xDots.plot(t,x)
         yDots.plot(t,y)
         akDots.plot(t,0)
-        tkDots.plot(t, 0.5 * mass * sqrt(v_x**2 + v_y**2))
+        tkDots.plot(t, 0.5 * m_bottle * sqrt(v_x**2 + v_y**2))
         
         t = t + dt
     return
 
-ball = sphere(pos=vec(5,10,0), color=color.green, radius=0.1)
-
-def go(): # runs simulation    
+def go(): # runs simulation
+    global bottle_com, run
+    
+    run.text = 'Pause'
+    
     bottle_com.pos = init_pos # resetting
-    draw_parabola(bottle_com, v_initial=vec(5,10,0))
+    draw_parabola(v_initial=vec(5,10,0))
     
     run.text = 'Run'
     return
