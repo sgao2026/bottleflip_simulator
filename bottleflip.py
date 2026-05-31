@@ -1,24 +1,30 @@
 Web VPython 3.2
 
-# from vpython import *
+#from vpython import *
 
-scene.camera.pos = vec(0,0,2)
+first = vec(1,0,0)
+second = vec(0,1,0)
+third = vec(0,0,1)
+
+bottle_mass = 0.036
+ice_density = 917 # kg/m^3
+
+scene.camera.pos = vec(0,0.1,1)
+
 t = 0.00
 dt = 0.02 # always increment time by 0.01
 flips = 0
-m_bottle = 0.5
 
 Tapp = 0 # user determined torque applied
-bottle1 = cylinder(pos=vec(-10, 0, 0), size=vec(1,1,1), axis=vec(0, 3, 0), color=color.white, opacity=0.5)
-percent_ice = 0 # percentage of total volume of the bottle
+percent_ice = 0.5 # percentage of total volume of the bottle
 init_height = 0 # initial height of flip
 
+def vol(shape): # cylinders only
+    return pi * shape.radius**2 * shape.length
+
 def com_ind(shape):
-    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=0.1)
+    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=0.01, visible = False)
     return com
-bottle_com = com_ind(bottle1)
-init_pos = bottle_com.pos
-bottle2 = compound([bottle1, com_ind(bottle1)])
 
 def torque (force, lever_arm):
     return cross(force, lever_arm)
@@ -29,15 +35,26 @@ def com_pts (mass, pos):
         result = result + (m * p)
     return result / sum(mass)
 
+bottle_ice = group()
+bottle = cylinder(pos=vec(0, 0, 0), radius=0.03175, length=.203, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
+ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=bottle.length * percent_ice, axis=bottle.axis, color=color.cyan, opacity=0.5, group=bottle_ice)
+
+bottle_com = com_ind(bottle)
+ice_com = com_ind(ice)
+bottle_com.group = bottle_ice
+ice_com.group = bottle_ice
+
+bottle_ice_com = sphere(pos=com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos)), color=color.red, radius=0.01, group=bottle_ice)
+
 def draw_parabola (v_initial,  a_y = -10):
-    global t, bottle2, bottle_com
-    v_x = dot(v_initial, vec(1, 0, 0))
-    v_y = dot(v_initial, vec(0, 1, 0))
+    global t, bottle_ice, bottle_ice_com
+    v_x = dot(v_initial, first)
+    v_y = dot(v_initial, second)
     
-    x = dot(bottle2.pos, vec(1, 0, 0))
-    y = dot(bottle2.pos, vec(0, 1, 0))
+    x = dot(bottle_ice.pos, first)
+    y = dot(bottle_ice.pos, second)
     
-    trace = attach_trail(bottle2, color=bottle_com.color)
+    trace = attach_trail(bottle_ice_com, color=color.green)
     while y > 0:
         rate(1 / dt)
         x = x + v_x * dt
@@ -45,36 +62,42 @@ def draw_parabola (v_initial,  a_y = -10):
         v_y = v_y + a_y * dt
         y = y + v_y * dt
         
-        bottle2.pos = vec(x, y, 0)
+        bottle_ice.pos = vec(x, y, 0)
         
         xDots.plot(t,x)
         yDots.plot(t,y)
         akDots.plot(t,0)
-        tkDots.plot(t, 0.5 * m_bottle * sqrt(v_x**2 + v_y**2))
+        tkDots.plot(t, 0.5 * (pi * dot(bottle.size, first) * dot(bottle.size, second)**2 + pi * dot(ice.size, first) * dot(ice.size, second)**2) * sqrt(v_x**2 + v_y**2))
         
         t = t + dt
     trace.stop()
     return
 
+init_pos = bottle_ice.pos
 def go(): # runs simulation
-    global bottle2, run
+    global bottle_ice, run
     
     run.text = 'Pause'
     
-    bottle2.pos = init_pos # resetting
+    bottle_ice.pos = init_pos # resetting
     draw_parabola(v_initial=vec(5,10,0))
     
     run.text = 'Run'
     return
 
 def setSliders(evt): # user inputted torque applied
-    global Tapp, percent_ice, init_height
+    global Tapp, percent_ice, init_height, ice, ice_com, bottle, bottle_ice_com
     if evt.id == 'Tapp_slider':
         Tapp = evt.value
         Tapp_label.text = '{:.2f}\n\n'.format(Tapp)
     elif evt.id == 'ice_slider':
         percent_ice = evt.value
         ice_label.text = '{:.2f}\n\n'.format(percent_ice)
+        
+        ice.axis = second
+        ice.length = bottle.length * percent_ice
+        ice_com.pos = com_ind(ice).pos
+        bottle_ice_com.pos = com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos))
     elif evt.id == 'height_slider':
         init_height = evt.value
         height_label.text = '{:.2f}\n\n'.format(init_height)
