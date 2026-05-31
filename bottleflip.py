@@ -1,29 +1,32 @@
 Web VPython 3.2
 
-#from vpython import *
-
 first = vec(1,0,0)
 second = vec(0,1,0)
 third = vec(0,0,1)
 
-bottle_mass = 0.036
-ice_density = 917 # kg/m^3
+bottle_mass = 10 # g
+bottle_radius = 3.175 # cm
+bottle_length = 20.3 # cm
+ice_density = 0.917 # g/cm^3
 
-scene.camera.pos = vec(0,0.1,1)
+scene.width = 700
+scene.height = 500
+scene.camera.pos = vec(0,bottle_length * 2,100)
 
 t = 0.00
 dt = 0.02 # always increment time by 0.01
 flips = 0
 
 Tapp = 0 # user determined torque applied
-percent_ice = 0.5 # percentage of total volume of the bottle
+percent_ice = 0 # percentage of total volume of the bottle
 init_height = 0 # initial height of flip
+init_pos = vec(60,init_height,0)
 
 def vol(shape): # cylinders only
     return pi * shape.radius**2 * shape.length
 
 def com_ind(shape):
-    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=0.01, visible = False)
+    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=1, visible = False)
     return com
 
 def torque (force, lever_arm):
@@ -36,7 +39,7 @@ def com_pts (mass, pos):
     return result / sum(mass)
 
 bottle_ice = group()
-bottle = cylinder(pos=vec(0, 0, 0), radius=0.03175, length=.203, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
+bottle = cylinder(pos=init_pos, radius=bottle_radius, length=bottle_length, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
 ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=bottle.length * percent_ice, axis=bottle.axis, color=color.cyan, opacity=0.5, group=bottle_ice)
 
 bottle_com = com_ind(bottle)
@@ -44,7 +47,7 @@ ice_com = com_ind(ice)
 bottle_com.group = bottle_ice
 ice_com.group = bottle_ice
 
-bottle_ice_com = sphere(pos=com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos)), color=color.red, radius=0.01, group=bottle_ice)
+bottle_ice_com = sphere(pos=com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos)), color=color.red, radius=1, group=bottle_ice)
 
 def draw_parabola (v_initial,  a_y = -10):
     global t, bottle_ice, bottle_ice_com
@@ -73,7 +76,6 @@ def draw_parabola (v_initial,  a_y = -10):
     trace.stop()
     return
 
-init_pos = bottle_ice.pos
 def go(): # runs simulation
     global bottle_ice, run
     
@@ -86,21 +88,26 @@ def go(): # runs simulation
     return
 
 def setSliders(evt): # user inputted torque applied
-    global Tapp, percent_ice, init_height, ice, ice_com, bottle, bottle_ice_com
+    global Tapp, percent_ice, init_height, ice, ice_com, bottle, bottle_ice, bottle_ice_com, init_pos
     if evt.id == 'Tapp_slider':
         Tapp = evt.value
-        Tapp_label.text = '{:.2f}\n\n'.format(Tapp)
+        Tapp_label.text = '{:.2f} N*m\n\n'.format(Tapp)
     elif evt.id == 'ice_slider':
         percent_ice = evt.value
-        ice_label.text = '{:.2f}\n\n'.format(percent_ice)
+        ice_label.text = '{:.0f}%\n\n'.format(percent_ice * 100)
         
         ice.axis = second
         ice.length = bottle.length * percent_ice
         ice_com.pos = com_ind(ice).pos
         bottle_ice_com.pos = com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos))
     elif evt.id == 'height_slider':
+        delta_h = evt.value - init_height
+        height_label.text = '{:.2f} cm\n\n'.format(init_height)
+        
+        init_pos =  init_pos + vec(0,delta_h,0)
+        bottle_ice.pos = bottle_ice.pos + vec(0,delta_h,0)
+        
         init_height = evt.value
-        height_label.text = '{:.2f}\n\n'.format(init_height)
 #     print(str(evt.id) + " " + str(Tapp))
 
 # sliders + labels
@@ -111,15 +118,15 @@ wtext(text=f'                                                                   
 
 scene.append_to_caption('Select applied torque\n')
 Tapp_slider = slider(id='Tapp_slider', bind=setSliders, min=0, value=Tapp, max=15, step=0.1, )
-Tapp_label = wtext(text='{:.2f}\n\n'.format(Tapp_slider.value))
+Tapp_label = wtext(text='{:.2f} N*m \n\n'.format(Tapp_slider.value))
 
 scene.append_to_caption('Select amount of ice\n')
 ice_slider = slider(id='ice_slider', bind=setSliders, min=0, value=percent_ice, max=1, step=0.01)
-ice_label = wtext(text='{:.2f}\n\n'.format(ice_slider.value))
+ice_label = wtext(text='{:.0f}%\n\n'.format(ice_slider.value * 100))
 
 scene.append_to_caption('Select height of release\n')
-height_slider = slider(id='height_slider', bind=setSliders, min=0, value=init_height, max=5, step=0.1)
-height_label = wtext(text='{:.2f}\n\n'.format(height_slider.value))
+height_slider = slider(id='height_slider', bind=setSliders, min=0, value=init_height, max=bottle_length * 2, step=0.1)
+height_label = wtext(text='{:.2f} cm\n\n'.format(height_slider.value))
 
 # graphs
 x_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("X Position"), align='left')
