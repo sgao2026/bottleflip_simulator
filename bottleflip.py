@@ -19,8 +19,10 @@ flips = 0
 
 Tapp = 0 # user determined torque applied
 percent_ice = 0 # percentage of total volume of the bottle
-init_height = 0 # initial height of flip
+init_height = 0.1 # initial height of flip
 init_pos = vec(60,init_height,0)
+
+origin = sphere(pos=vec(0,0,0), radius=0.5)
 
 def vol(shape): # cylinders only
     return pi * shape.radius**2 * shape.length
@@ -49,15 +51,16 @@ ice_com.group = bottle_ice
 
 bottle_ice_com = sphere(pos=com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos)), color=color.red, radius=1, group=bottle_ice)
 
+
+trail = []
 def draw_parabola (v_initial,  a_y = -10):
-    global t, bottle_ice, bottle_ice_com
+    global t, bottle_ice
     v_x = dot(v_initial, first)
     v_y = dot(v_initial, second)
     
-    x = dot(bottle_ice.pos, first)
-    y = dot(bottle_ice.pos, second)
+    x = dot(bottle_ice.pos + bottle.pos, first)
+    y = dot(bottle_ice.pos + bottle.pos, second)
     
-    trace = attach_trail(bottle_ice_com, color=color.green)
     while y > 0:
         rate(1 / dt)
         x = x + v_x * dt
@@ -65,24 +68,29 @@ def draw_parabola (v_initial,  a_y = -10):
         v_y = v_y + a_y * dt
         y = y + v_y * dt
         
-        bottle_ice.pos = vec(x, y, 0)
+        bottle_ice.pos = vec(x,y,0) - bottle.pos
+        trail.append(sphere(pos=bottle_ice_com.pos + bottle_ice.pos, color=bottle_ice_com.color))
         
         xDots.plot(t,x)
         yDots.plot(t,y)
         akDots.plot(t,0)
-        tkDots.plot(t, 0.5 * (pi * dot(bottle.size, first) * dot(bottle.size, second)**2 + pi * dot(ice.size, first) * dot(ice.size, second)**2) * sqrt(v_x**2 + v_y**2))
+        tkDots.plot(t, 0.5 * (vol(ice) * ice_density + bottle_mass) * (v_x**2 + v_y**2))
         
         t = t + dt
-    trace.stop()
     return
 
 def go(): # runs simulation
     global bottle_ice, run
     
+    # clear trail
+    for pt in trail:
+        pt.visible = False
+        pt = None
+    trail.clear()
     run.text = 'Pause'
     
-    bottle_ice.pos = init_pos # resetting
-    draw_parabola(v_initial=vec(5,10,0))
+    bottle_ice.pos = init_pos - bottle.pos # resetting
+    draw_parabola(v_initial=vec(-25,25,0))
     
     run.text = 'Run'
     return
