@@ -9,6 +9,8 @@ bottle_radius = 3.175 # cm
 bottle_length = 20.3 # cm
 ice_density = 0.917 # g/cm^3
 
+g = -1000 # cm/s^2
+
 scene.width = 700
 scene.height = 500
 scene.camera.pos = vec(0,bottle_length * 2,100)
@@ -17,50 +19,71 @@ t = 0.00
 dt = 0.02 # always increment time by 0.01
 flips = 0
 
-Tapp = 0 # user determined torque applied
-percent_ice = 0 # percentage of total volume of the bottle
-init_height = 0.1 # initial height of flip
-init_pos = vec(60,init_height,0)
+Fapp = vec(-10,0,0) # user determined torque applied
+percent_ice = 0.5 # percentage of total volume of the bottle
+init_pos = vec(40,0,0) # coordinate of bottle
+trail = [] # to trace trajectory
 
-origin = sphere(pos=vec(0,0,0), radius=0.5)
+wrist = sphere(pos=init_pos + vec(0,bottle_length + 7,0), radius = 0.5)
 
 def vol(shape): # cylinders only
     return pi * shape.radius**2 * shape.length
 
 def com_ind(shape):
-    com = sphere(pos=vec(shape.pos + shape.axis/2), color=color.green, radius=1, visible = False)
-    return com
+    return shape.pos + second * shape.length * 0.5
 
-def torque (force, lever_arm):
-    return cross(force, lever_arm)
+def torque (lever_arm, force):
+    return cross(lever_arm, force)
     
 def com_pts (mass, pos):
-    result = vec(0,0,0)
-    for m,p in zip(mass,pos) :
-        result = result + (m * p)
-    return result / sum(mass)
+    weighted = vec(0,0,0)
+    for i in range(mass.length):
+        weighted = weighted + mass[i]*pos[i]
+    return weighted / sum(mass)
 
+## draw bottle
 bottle_ice = group()
-bottle = cylinder(pos=init_pos, radius=bottle_radius, length=bottle_length, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
-ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=bottle.length * percent_ice, axis=bottle.axis, color=color.cyan, opacity=0.5, group=bottle_ice)
 
-bottle_com = com_ind(bottle)
-ice_com = com_ind(ice)
-bottle_com.group = bottle_ice
-ice_com.group = bottle_ice
+bottle = cylinder(radius=bottle_radius, length=bottle_length, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
+bottle_com = sphere(pos=com_ind(bottle), visible=False, group=bottle_ice)
 
-bottle_ice_com = sphere(pos=com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos)), color=color.red, radius=1, group=bottle_ice)
+ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=percent_ice * bottle.length, axis=bottle.axis, color=color.cyan, opacity=0.5, group=bottle_ice)
+ice_mass = vol(ice) * ice_density
+ice_com = sphere(pos=com_ind(ice), visible=False, group=bottle_ice)
 
+bottle_ice_com = sphere(pos=com_pts((bottle_mass, ice_mass), (bottle_com.pos, ice_com.pos)), color=color.red, group=bottle_ice, make_trail=False)
 
-trail = []
-def draw_parabola (v_initial,  a_y = -10):
-    global t, bottle_ice
+bottle_ice.tvel = vec(0,0,0)
+bottle_ice.avel = 0
+bottle_ice.theta = 0
+
+Farrow = arrow(pos=bottle.pos + second * bottle.length, axis=hat(Fapp), shaftwidth=1, color=color.red, group=bottle_ice)
+
+def setup():
+    global bottle_ice, trail
+
+    # clear trail
+    for pt in trail:
+        pt.visible = False
+        pt = None
+    trail.clear()
+    
+    # reset angle
+    bottle_ice.axis = first
+    
+    # resetting group
+    bottle_ice.pos = init_pos - bottle.pos
+    
+def draw_parabola (v_initial,  a_y = g):
+    global t, bottle_ice, bottle_ice_com
+    bottle_ice.v = v_initial
     v_x = dot(v_initial, first)
     v_y = dot(v_initial, second)
     
     x = dot(bottle_ice.pos + bottle.pos, first)
     y = dot(bottle_ice.pos + bottle.pos, second)
     
+    bottle_ice_com.make_trail = True
     while y > 0:
         rate(1 / dt)
         x = x + v_x * dt
@@ -73,67 +96,97 @@ def draw_parabola (v_initial,  a_y = -10):
         
         xDots.plot(t,x)
         yDots.plot(t,y)
-        akDots.plot(t,0)
-        tkDots.plot(t, 0.5 * (vol(ice) * ice_density + bottle_mass) * (v_x**2 + v_y**2))
+        tkDots.plot(t, 0.5 * (ice_mass + bottle_mass) * (v_x**2 + v_y**2))
         
         t = t + dt
+    bottle_ice_com.make_trail = True
     return
 
+def flip():
+    global t, bottle_ice
+        
+    F_g = ice_mass * vec(0,g,0)
+        
+    lever_app = bottle_ice.group_to_world(bottle.pos + vec(0,bottle.length,0)) - wrist.pos
+    lever_g = bottle_ice.pos - wrist.pos
+        
+    T_app = torque(lever_app, Fapp)
+    T_g = torque(lever_g, F_g)
+    if T_app == T_g: return # angular speed does not change
+    
+    I_bottle = 0.5 * bottle_mass * bottle_radius**2 + 1/12 * bottle_mass * bottle_length**2 + bottle_mass * mag(bottle_ice.group_to_world(bottle_com.pos) - wrist.pos)**2
+    I_ice = 0.25 * ice_mass * ice.radius**2 + 1/12 * ice_mass * ice.length**2 + ice_mass * mag(bottle_ice.group_to_world(ice_com.pos) - wrist.pos)**2
+    
+    a_a = (T_app + T_g) / (I_bottle + I_ice)
+    
+    while bottle_ice.theta <= pi/2:
+        rate(1 / dt)
+        bottle_ice.avel = bottle_ice.avel + mag(a_a) * dt
+#        print(bottle_ice.avel)
+        d_theta = bottle_ice.avel * dt
+        
+        bottle_ice.rotate(axis=hat(a_a), angle=d_theta, origin=wrist.pos)
+#        print(bottle_ice.theta)
+        bottle_ice.theta = bottle_ice.theta + d_theta
+        
+        akDots.plot(t, 0.5 * (I_bottle + I_ice) * bottle_ice.avel**2)
+        
+        t = t + dt
+    
 def go(): # runs simulation
     global bottle_ice, run
-    
-    # clear trail
-    for pt in trail:
-        pt.visible = False
-        pt = None
-    trail.clear()
     run.text = 'Pause'
     
-    bottle_ice.pos = init_pos - bottle.pos # resetting
-    draw_parabola(v_initial=vec(-25,25,0))
-    
+    # flip
+    flip()
+    print("flip done")
+        
     run.text = 'Run'
     return
 
-def setSliders(evt): # user inputted torque applied
-    global Tapp, percent_ice, init_height, ice, ice_com, bottle, bottle_ice, bottle_ice_com, init_pos
-    if evt.id == 'Tapp_slider':
-        Tapp = evt.value
-        Tapp_label.text = '{:.2f} N*m\n\n'.format(Tapp)
+def setSliders(evt): # user inputs
+    global Fapp, Farrow, percent_ice, init_height, ice, ice_com, bottle, bottle_ice, bottle_ice_com, init_pos, o
+    if evt.id == 'Fapp_slider':
+        Fapp = vec(-1 * evt.value,0,0)
+        Fapp_label.text = '{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5)
+        
+        Farrow.axis = hat(Fapp)
     elif evt.id == 'ice_slider':
         percent_ice = evt.value
         ice_label.text = '{:.0f}%\n\n'.format(percent_ice * 100)
         
         ice.axis = second
         ice.length = bottle.length * percent_ice
-        ice_com.pos = com_ind(ice).pos
-        bottle_ice_com.pos = com_pts((bottle_mass, vol(ice) * ice_density), (bottle_com.pos, ice_com.pos))
+        ice_mass = vol(ice) * ice_density
+        ice_com.pos = com_ind(ice)
+        bottle_ice_com.pos = com_pts((bottle_mass, ice_mass), (bottle_com.pos, ice_com.pos))
     elif evt.id == 'height_slider':
-        delta_h = evt.value - init_height
+        delta_h = evt.value - dot(init_pos,second)
         height_label.text = '{:.2f} cm\n\n'.format(init_height)
         
-        init_pos =  init_pos + vec(0,delta_h,0)
+        init_pos = init_pos + vec(0,delta_h,0)
         bottle_ice.pos = bottle_ice.pos + vec(0,delta_h,0)
         
         init_height = evt.value
 #     print(str(evt.id) + " " + str(Tapp))
 
 # sliders + labels
+reset = button(bind=setup, text='Reset', pos=scene.title_anchor)
 run = button(bind=go, text='Run', pos=scene.title_anchor)
 
 scene.caption = "Simulation Properties"
 wtext(text=f'                                                                          Flip Counter: {flips}\n\n')
 
-scene.append_to_caption('Select applied torque\n')
-Tapp_slider = slider(id='Tapp_slider', bind=setSliders, min=0, value=Tapp, max=15, step=0.1, )
-Tapp_label = wtext(text='{:.2f} N*m \n\n'.format(Tapp_slider.value))
+scene.append_to_caption('Select applied force\n')
+Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=0, value=mag(Fapp), max=5000000, step=10)
+Fapp_label = wtext(text='{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5))
 
 scene.append_to_caption('Select amount of ice\n')
 ice_slider = slider(id='ice_slider', bind=setSliders, min=0, value=percent_ice, max=1, step=0.01)
 ice_label = wtext(text='{:.0f}%\n\n'.format(ice_slider.value * 100))
 
 scene.append_to_caption('Select height of release\n')
-height_slider = slider(id='height_slider', bind=setSliders, min=0, value=init_height, max=bottle_length * 2, step=0.1)
+height_slider = slider(id='height_slider', bind=setSliders, min=0, value=dot(init_pos,second), max=bottle_length * 2, step=0.1)
 height_label = wtext(text='{:.2f} cm\n\n'.format(height_slider.value))
 
 # graphs
@@ -148,3 +201,5 @@ akDots=gdots(color=color.green, graph=ak_t)
 
 tk_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Translational KE"), align='left')
 tkDots=gdots(color=color.green, graph=tk_t)
+
+setup()
