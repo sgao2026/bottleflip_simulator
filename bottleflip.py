@@ -14,6 +14,7 @@ g = -1000 # cm/s^2
 scene.width = 700
 scene.height = 500
 scene.camera.pos = vec(0,bottle_length * 2,100)
+table = box(pos=vec(0, -0.2, 0), length=scene.width, height=0.1, width=10, color=color.white)
 
 t = 0.00
 dt = 0.01 # always increment time by 0.01
