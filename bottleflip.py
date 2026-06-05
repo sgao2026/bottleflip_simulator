@@ -33,11 +33,11 @@ def orth(u): # rotate pi/2 ccw
 def vol(shape): # cylinders only
     return pi * shape.radius**2 * shape.length
 
-def com_ind(shape):
-    return shape.pos + hat(shape.axis) * shape.length * 0.5
-
 def torque (lever_arm, force):
     return cross(lever_arm, force)
+
+def com_ind(shape):
+    return shape.pos + hat(shape.axis) * shape.length * 0.5
     
 def com_pts (mass, pos):
     weighted = vec(0,0,0)
@@ -78,6 +78,12 @@ init_tvel = bottle_ice.tvel
 init_avel = bottle_ice.avel
 init_theta = bottle_ice.theta
 
+def check_ground_contact():
+    for v in bottle.bounding_box():
+        v = bottle_ice.group_to_world(v)
+        if dot(v, second) <= 0: return True
+    return False
+
 def setup():
     global bottle_ice, flips, t
     
@@ -105,8 +111,7 @@ def draw_parabola (v_initial,  a_y = g):
     y = dot(bottle_ice.group_to_world(bottle.pos), second)
     
     d_theta = 0
-    bottle_ice_com.make_trail = True
-    while y > 0:
+    while (not check_ground_contact()):
         rate(1 / dt)
         # rotate
         bottle_ice.rotate(axis=-1*third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
@@ -178,7 +183,6 @@ def go(): # runs simulation
     
     # flip
     flip()
-    print("flip done")
     
     # parabola
     draw_parabola(bottle_ice.tvel)
