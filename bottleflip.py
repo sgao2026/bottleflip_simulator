@@ -197,6 +197,8 @@ def go(): # runs simulation
     
     # parabola
     draw_parabola(bottle_ice.tvel)
+
+    label(pos=vec(-15, 15, 0), text='Flip done!', xoffset=20, yoffset=50, space=30, height=16, font='Helvetica', line = False, background = color.green)
     
     # impact behavior
     impact()
