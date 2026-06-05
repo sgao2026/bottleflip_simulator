@@ -14,6 +14,7 @@ g = -1000 # cm/s^2
 scene.width = 700
 scene.height = 500
 scene.camera.pos = vec(0,bottle_length * 2,100)
+table = box(pos=vec(0, -0.2, 0), length=scene.width, height=0.1, width=10, color=color.white)
 
 t = 0.00
 dt = 0.005 # always increment time by 0.01
@@ -106,6 +107,8 @@ def setup():
     bottle_ice.theta = init_theta
     flips = 0
     t = 0
+
+    finished.visible = False
     
     # clear trail
     for p in trail:
@@ -224,7 +227,9 @@ def impact():
         
         t = t + dt
     return
-    
+
+finished = label(pos=vec(-15, 15, 0), text='Flip done!', xoffset=20, yoffset=50, space=30, height=16, font='Helvetica', line = False, background = color.green)
+
 def go(): # runs simulation
     global bottle_ice, run
     run.text = 'Pause'
@@ -234,6 +239,8 @@ def go(): # runs simulation
     
     # parabola
     draw_parabola(bottle_ice.tvel)
+
+    finished.visible = True
     
     # impact behavior
     impact()
