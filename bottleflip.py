@@ -98,6 +98,8 @@ def setup():
     bottle_ice.theta = init_theta
     flips = 0
     t = 0
+
+    finished.visible = False
     
     # clear trail
     for p in trail:
@@ -188,7 +190,9 @@ def impact():
         if dot(v, second) < dot(min_pos, second): min_pos = v
     sphere(pos=min_pos)
     return
-    
+
+finished = label(pos=vec(-15, 15, 0), text='Flip done!', xoffset=20, yoffset=50, space=30, height=16, font='Helvetica', line = False, background = color.green)
+
 def go(): # runs simulation
     global bottle_ice, run
     run.text = 'Pause'
@@ -199,7 +203,7 @@ def go(): # runs simulation
     # parabola
     draw_parabola(bottle_ice.tvel)
 
-    label(pos=vec(-15, 15, 0), text='Flip done!', xoffset=20, yoffset=50, space=30, height=16, font='Helvetica', line = False, background = color.green)
+    finished.visible = True
     
     # impact behavior
     impact()
