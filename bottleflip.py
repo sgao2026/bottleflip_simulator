@@ -78,11 +78,13 @@ init_tvel = bottle_ice.tvel
 init_avel = bottle_ice.avel
 init_theta = bottle_ice.theta
 
-def check_ground_contact():
+
+def get_contact_points():
+    result = []
     for v in bottle.bounding_box():
         v = bottle_ice.group_to_world(v)
-        if dot(v, second) <= 0: return True
-    return False
+        if dot(v, second) <= 0: result.append(v)
+    return result
 
 def setup():
     global bottle_ice, flips, t
@@ -111,7 +113,7 @@ def draw_parabola (v_initial,  a_y = g):
     y = dot(bottle_ice.group_to_world(bottle.pos), second)
     
     d_theta = 0
-    while (not check_ground_contact()):
+    while len(get_contact_points()) == 0:
         rate(1 / dt)
         # rotate
         bottle_ice.rotate(axis=-1*third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
@@ -176,6 +178,15 @@ def flip():
         
         # trail
         trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
+
+def impact():
+    contact_list = get_contact_points()
+    
+    min_pos = contact_list[0]
+    for v in contact_list:
+        if dot(v, second) < dot(min_pos, second): min_pos = v
+    sphere(pos=min_pos)
+    return
     
 def go(): # runs simulation
     global bottle_ice, run
@@ -186,6 +197,9 @@ def go(): # runs simulation
     
     # parabola
     draw_parabola(bottle_ice.tvel)
+    
+    # impact behavior
+    impact()
     
     run.text = 'Run'
     return
