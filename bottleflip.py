@@ -16,21 +16,25 @@ scene.height = 500
 scene.camera.pos = vec(0,bottle_length * 2,100)
 
 t = 0.00
-dt = 0.02 # always increment time by 0.01
+dt = 0.01 # always increment time by 0.01
 flips = 0
 
-Fapp = vec(-10,0,0) # user determined torque applied
+Fapp = vec(-1700000,0,0) # user determined torque applied
 percent_ice = 0.5 # percentage of total volume of the bottle
 init_pos = vec(40,0,0) # coordinate of bottle
 trail = [] # to trace trajectory
 
 wrist = sphere(pos=init_pos + vec(0,bottle_length + 7,0), radius = 0.5)
+origin = sphere(color=color.yellow)
+
+def orth(u): # rotate pi/2 ccw
+    return cross(u, -1 * third)
 
 def vol(shape): # cylinders only
     return pi * shape.radius**2 * shape.length
 
 def com_ind(shape):
-    return shape.pos + second * shape.length * 0.5
+    return shape.pos + hat(shape.axis) * shape.length * 0.5
 
 def torque (lever_arm, force):
     return cross(lever_arm, force)
@@ -44,20 +48,29 @@ def com_pts (mass, pos):
 ## draw bottle
 bottle_ice = group()
 
-bottle = cylinder(radius=bottle_radius, length=bottle_length, axis=second, color=color.white, opacity=0.5, group=bottle_ice)
+bottle = cylinder(radius=bottle_radius, length=bottle_length, color=color.white, opacity=0.5, group=bottle_ice)
 bottle_com = sphere(pos=com_ind(bottle), visible=False, group=bottle_ice)
 
-ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=percent_ice * bottle.length, axis=bottle.axis, color=color.cyan, opacity=0.5, group=bottle_ice)
+ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=percent_ice * bottle.length, color=color.cyan, opacity=0.5, group=bottle_ice)
 ice_mass = vol(ice) * ice_density
 ice_com = sphere(pos=com_ind(ice), visible=False, group=bottle_ice)
 
-bottle_ice_com = sphere(pos=com_pts((bottle_mass, ice_mass), (bottle_com.pos, ice_com.pos)), color=color.red, group=bottle_ice, make_trail=False)
+bottle_ice_com_pos = com_pts((bottle_mass, ice_mass), (bottle_ice.group_to_world(bottle_com.pos), bottle_ice.group_to_world(ice_com.pos)))
+
+bottle.pos = bottle.pos - bottle_ice_com_pos
+bottle_com.pos = bottle_com.pos - bottle_ice_com_pos
+ice.pos = ice.pos - bottle_ice_com_pos
+ice_com.pos = ice_com.pos - bottle_ice_com_pos
+
+bottle_ice_com = sphere(color=color.red, make_trail=False, group=bottle_ice)
 
 bottle_ice.tvel = vec(0,0,0)
 bottle_ice.avel = 0
 bottle_ice.theta = 0
 
-Farrow = arrow(pos=bottle.pos + second * bottle.length, axis=hat(Fapp), shaftwidth=1, color=color.red, group=bottle_ice)
+Farrow = arrow(pos=bottle_ice.world_to_group(bottle.pos + first * bottle.length), axis=hat(orth(bottle_ice.axis))*mag(Fapp)*10**-5, shaftwidth=1, color=color.red, group=bottle_ice)
+bottle_ice.rotate(axis=third, angle=pi/2)
+bottle_ice.pos = bottle_ice.pos + init_pos - bottle.pos
 
 def setup():
     global bottle_ice, trail
@@ -69,34 +82,38 @@ def setup():
     trail.clear()
     
     # reset angle
-    bottle_ice.axis = first
+#    bottle_ice.axis = first
     
     # resetting group
-    bottle_ice.pos = init_pos - bottle.pos
+#    bottle_ice.pos = init_pos - bottle.pos
     
 def draw_parabola (v_initial,  a_y = g):
     global t, bottle_ice, bottle_ice_com
-    bottle_ice.v = v_initial
     v_x = dot(v_initial, first)
     v_y = dot(v_initial, second)
     
-    x = dot(bottle_ice.pos + bottle.pos, first)
-    y = dot(bottle_ice.pos + bottle.pos, second)
+    x = dot(bottle_ice.group_to_world(bottle.pos), first)
+    y = dot(bottle_ice.group_to_world(bottle.pos), second)
     
     bottle_ice_com.make_trail = True
     while y > 0:
         rate(1 / dt)
+        # rotate
+        bottle_ice.rotate(axis=-1*third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
+        sphere(pos=bottle_ice.pos, color=color.yellow)
+        
         x = x + v_x * dt
         
         v_y = v_y + a_y * dt
         y = y + v_y * dt
         
-        bottle_ice.pos = vec(x,y,0) - bottle.pos
-        trail.append(sphere(pos=bottle_ice_com.pos + bottle_ice.pos, color=bottle_ice_com.color))
+        bottle_ice.pos = vec(x,y,0)
+        trail.append(sphere(pos=bottle_ice.group_to_world(bottle_ice_com.pos), color=bottle_ice_com.color))
         
         xDots.plot(t,x)
         yDots.plot(t,y)
         tkDots.plot(t, 0.5 * (ice_mass + bottle_mass) * (v_x**2 + v_y**2))
+        
         
         t = t + dt
     bottle_ice_com.make_trail = True
@@ -105,27 +122,31 @@ def draw_parabola (v_initial,  a_y = g):
 def flip():
     global t, bottle_ice
         
-    F_g = ice_mass * vec(0,g,0)
+    F_g = (ice_mass + bottle_mass) * vec(0,g,0)
         
     lever_app = bottle_ice.group_to_world(bottle.pos + vec(0,bottle.length,0)) - wrist.pos
-    lever_g = bottle_ice.pos - wrist.pos
         
     T_app = torque(lever_app, Fapp)
-    T_g = torque(lever_g, F_g)
-    if T_app == T_g: return # angular speed does not change
+    if T_app == 0: return # not force applied
     
     I_bottle = 0.5 * bottle_mass * bottle_radius**2 + 1/12 * bottle_mass * bottle_length**2 + bottle_mass * mag(bottle_ice.group_to_world(bottle_com.pos) - wrist.pos)**2
     I_ice = 0.25 * ice_mass * ice.radius**2 + 1/12 * ice_mass * ice.length**2 + ice_mass * mag(bottle_ice.group_to_world(ice_com.pos) - wrist.pos)**2
     
-    a_a = (T_app + T_g) / (I_bottle + I_ice)
-    
     while bottle_ice.theta <= pi/2:
         rate(1 / dt)
+        
+        lever_g = bottle_ice.group_to_world(bottle_ice_com.pos) - wrist.pos
+        T_g = torque(lever_g, F_g)
+        a_a = (T_app + T_g) / (I_bottle + I_ice)
+        
         bottle_ice.avel = bottle_ice.avel + mag(a_a) * dt
-#        print(bottle_ice.avel)
+        bottle_ice.tvel = rotate(norm(-1 * lever_g), angle=pi/2, origin=wrist.pos) * bottle_ice.avel * mag(lever_g)
         d_theta = bottle_ice.avel * dt
         
-        bottle_ice.rotate(axis=hat(a_a), angle=d_theta, origin=wrist.pos)
+        arrow(pos=bottle_ice.pos, axis=10*bottle_ice.axis)
+        bottle_ice.axis = rotate(bottle_ice.axis, axis=hat(a_a), angle=d_theta, origin=wrist.pos)
+        bottle_ice.pos = wrist.pos + rotate(lever_g, axis=hat(a_a), angle=d_theta)
+        sphere(pos=bottle_ice.pos, color=color.purple)
 #        print(bottle_ice.theta)
         bottle_ice.theta = bottle_ice.theta + d_theta
         
@@ -140,7 +161,10 @@ def go(): # runs simulation
     # flip
     flip()
     print("flip done")
-        
+    
+    # parabola
+    draw_parabola(bottle_ice.tvel)
+    
     run.text = 'Run'
     return
 
@@ -150,12 +174,12 @@ def setSliders(evt): # user inputs
         Fapp = vec(-1 * evt.value,0,0)
         Fapp_label.text = '{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5)
         
-        Farrow.axis = hat(Fapp)
+        Farrow.axis = hat(Farrow.axis) * mag(Fapp)*10**-5
     elif evt.id == 'ice_slider':
         percent_ice = evt.value
         ice_label.text = '{:.0f}%\n\n'.format(percent_ice * 100)
         
-        ice.axis = second
+        ice.axis = bottle_ice.axis
         ice.length = bottle.length * percent_ice
         ice_mass = vol(ice) * ice_density
         ice_com.pos = com_ind(ice)
