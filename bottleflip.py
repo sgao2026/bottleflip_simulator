@@ -18,11 +18,11 @@ scene.camera.pos = vec(0,bottle_length * 2,100)
 t = 0.00
 dt = 0.01 # always increment time by 0.01
 flips = 0
+trail = []
 
 Fapp = vec(-1700000,0,0) # user determined torque applied
 percent_ice = 0.5 # percentage of total volume of the bottle
 init_pos = vec(40,0,0) # coordinate of bottle
-trail = [] # to trace trajectory
 
 wrist = sphere(pos=init_pos + vec(0,bottle_length + 7,0), radius = 0.5)
 origin = sphere(color=color.yellow)
@@ -72,43 +72,57 @@ Farrow = arrow(pos=bottle_ice.world_to_group(bottle.pos + first * bottle.length)
 bottle_ice.rotate(axis=third, angle=pi/2)
 bottle_ice.pos = bottle_ice.pos + init_pos - bottle.pos
 
-def setup():
-    global bottle_ice, trail
+init_pos = bottle_ice.pos
+init_axis = bottle_ice.axis
+init_tvel = bottle_ice.tvel
+init_avel = bottle_ice.avel
+init_theta = bottle_ice.theta
 
+def setup():
+    global bottle_ice, flips, t
+    
+    # reset everything
+    bottle_ice.pos = init_pos
+    bottle_ice.axis = init_axis
+    bottle_ice.tvel = init_tvel
+    bottle_ice.avel = init_avel
+    bottle_ice.theta = init_theta
+    flips = 0
+    t = 0
+    
     # clear trail
-    for pt in trail:
-        pt.visible = False
-        pt = None
+    for p in trail:
+        p.visible = False
+        p = None
     trail.clear()
     
-    # reset angle
-#    bottle_ice.axis = first
-    
-    # resetting group
-#    bottle_ice.pos = init_pos - bottle.pos
-    
 def draw_parabola (v_initial,  a_y = g):
-    global t, bottle_ice, bottle_ice_com
+    global t, bottle_ice, bottle_ice_com, flips
     v_x = dot(v_initial, first)
     v_y = dot(v_initial, second)
     
     x = dot(bottle_ice.group_to_world(bottle.pos), first)
     y = dot(bottle_ice.group_to_world(bottle.pos), second)
     
+    d_theta = 0
     bottle_ice_com.make_trail = True
     while y > 0:
         rate(1 / dt)
         # rotate
         bottle_ice.rotate(axis=-1*third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
-        sphere(pos=bottle_ice.pos, color=color.yellow)
+        d_theta = d_theta + bottle_ice.avel * dt
+        if d_theta > 2*pi:
+            d_theta = d_theta % 2*pi
+            flips = flips + 1
+            flips_label.text = f'Flip Counter: {flips}'
         
-        x = x + v_x * dt
+        d_x = v_x * dt
         
         v_y = v_y + a_y * dt
-        y = y + v_y * dt
+        d_y = v_y * dt
+        y = y + d_y
         
-        bottle_ice.pos = vec(x,y,0)
-        trail.append(sphere(pos=bottle_ice.group_to_world(bottle_ice_com.pos), color=bottle_ice_com.color))
+        bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
         
         xDots.plot(t,x)
         yDots.plot(t,y)
@@ -116,7 +130,9 @@ def draw_parabola (v_initial,  a_y = g):
         
         
         t = t + dt
-    bottle_ice_com.make_trail = True
+        
+        # trail
+        trail.append(sphere(pos=bottle_ice.pos, color=ice.color))    bottle_ice_com.make_trail = False
     return
 
 def flip():
@@ -143,16 +159,18 @@ def flip():
         bottle_ice.tvel = rotate(norm(-1 * lever_g), angle=pi/2, origin=wrist.pos) * bottle_ice.avel * mag(lever_g)
         d_theta = bottle_ice.avel * dt
         
-        arrow(pos=bottle_ice.pos, axis=10*bottle_ice.axis)
+#        arrow(pos=bottle_ice.pos, axis=10*bottle_ice.axis)
         bottle_ice.axis = rotate(bottle_ice.axis, axis=hat(a_a), angle=d_theta, origin=wrist.pos)
         bottle_ice.pos = wrist.pos + rotate(lever_g, axis=hat(a_a), angle=d_theta)
-        sphere(pos=bottle_ice.pos, color=color.purple)
-#        print(bottle_ice.theta)
+#        sphere(pos=bottle_ice.pos, color=color.purple)
         bottle_ice.theta = bottle_ice.theta + d_theta
         
         akDots.plot(t, 0.5 * (I_bottle + I_ice) * bottle_ice.avel**2)
         
         t = t + dt
+        
+        # trail
+        trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
     
 def go(): # runs simulation
     global bottle_ice, run
@@ -199,7 +217,9 @@ reset = button(bind=setup, text='Reset', pos=scene.title_anchor)
 run = button(bind=go, text='Run', pos=scene.title_anchor)
 
 scene.caption = "Simulation Properties"
-wtext(text=f'                                                                          Flip Counter: {flips}\n\n')
+wtext(text='                                                                          ')
+flips_label = wtext(text=f'Flip Counter: {flips}')
+wtext(text='\n\n')
 
 scene.append_to_caption('Select applied force\n')
 Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=0, value=mag(Fapp), max=5000000, step=10)
