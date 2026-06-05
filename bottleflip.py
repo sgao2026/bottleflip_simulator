@@ -16,7 +16,7 @@ scene.height = 500
 scene.camera.pos = vec(0,bottle_length * 2,100)
 
 t = 0.00
-dt = 0.01 # always increment time by 0.01
+dt = 0.005 # always increment time by 0.01
 flips = 0
 trail = []
 
@@ -85,6 +85,15 @@ def get_contact_points():
         v = bottle_ice.group_to_world(v)
         if dot(v, second) <= 0: result.append(v)
     return result
+
+def full_contact(ground):
+    contact_count = 0
+    
+    for v in bottle.bounding_box():
+        v = bottle_ice.group_to_world(v)
+        if dot(v, second) <= ground: contact_count = contact_count + 1
+    
+    return contact_count == 4
 
 def setup():
     global bottle_ice, flips, t
@@ -180,12 +189,40 @@ def flip():
         trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
 
 def impact():
+    global t, bottle_ice
     contact_list = get_contact_points()
+    dampen = 0.9
     
     min_pos = contact_list[0]
     for v in contact_list:
         if dot(v, second) < dot(min_pos, second): min_pos = v
-    sphere(pos=min_pos)
+    min_pos = vec(dot(min_pos, first), dot(min_pos, second), 0)    
+        
+    F_g = (ice_mass + bottle_mass) * vec(0,g,0)
+        
+    I_bottle = 0.5 * bottle_mass * bottle_radius**2 + 1/12 * bottle_mass * bottle_length**2 + bottle_mass * mag(bottle_ice.group_to_world(bottle_com.pos) - min_pos)**2
+    I_ice = 0.25 * ice_mass * ice.radius**2 + 1/12 * ice_mass * ice.length**2 + ice_mass * mag(bottle_ice.group_to_world(ice_com.pos) - min_pos)**2
+    
+    while (not full_contact(dot(min_pos, second))):
+        rate(1 / dt)
+        
+        lever_g = bottle_ice.group_to_world(bottle_ice_com.pos) - min_pos
+        T_g = torque(lever_g, F_g)
+        a_a = T_g / (I_bottle + I_ice)
+        
+        bottle_ice.avel = (bottle_ice.avel + mag(a_a) * dt) * dampen
+        bottle_ice.tvel = rotate(norm(-1 * lever_g), angle=pi/2, origin=min_pos) * bottle_ice.avel * mag(lever_g)
+        d_theta = bottle_ice.avel * dt
+        
+#        arrow(pos=bottle_ice.pos, axis=10*bottle_ice.axis)
+        bottle_ice.axis = rotate(bottle_ice.axis, axis=hat(a_a), angle=d_theta, origin=min_pos)
+        bottle_ice.pos = min_pos + rotate(lever_g, axis=hat(a_a), angle=d_theta)
+#        sphere(pos=bottle_ice.pos, color=color.purple)
+        bottle_ice.theta = bottle_ice.theta + d_theta
+        
+        akDots.plot(t, 0.5 * (I_bottle + I_ice) * bottle_ice.avel**2)
+        
+        t = t + dt
     return
     
 def go(): # runs simulation
@@ -197,11 +234,10 @@ def go(): # runs simulation
     
     # parabola
     draw_parabola(bottle_ice.tvel)
-
-    label(pos=vec(-15, 15, 0), text='Flip done!', xoffset=20, yoffset=50, space=30, height=16, font='Helvetica', line = False, background = color.green)
     
     # impact behavior
     impact()
+    print("impact done")
     
     run.text = 'Run'
     return
