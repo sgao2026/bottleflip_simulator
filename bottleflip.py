@@ -26,7 +26,7 @@ scene.userzoom = False
 scene.camera.pos = vec(0,bottle_length * 2,100)
 
 t = 0.00
-dt = 0.001
+dt = 0.005
 flips = 0
 trail = []
 
@@ -84,9 +84,9 @@ bottle_ice.theta = 0
 
 Farrow = arrow(pos=bottle_ice.world_to_group(bottle.pos + first * bottle.length), axis=hat(orth(bottle_ice.axis))*mag(Fapp)*10**-5, shaftwidth=1, color=color.red, group=bottle_ice)
 bottle_ice.rotate(axis=third, angle=pi/2)
-bottle_ice.pos = bottle_ice.pos + init_pos - bottle.pos
+bottle_ice_com_pos = rotate(bottle_ice_com_pos, axis=third, angle=pi/2)
+bottle_ice.pos = init_pos - bottle.pos
 
-init_pos = bottle_ice.pos
 init_axis = bottle_ice.axis
 init_tvel = bottle_ice.tvel
 init_avel = bottle_ice.avel
@@ -114,14 +114,14 @@ def full_contact(ground):
 
 def check_upright():
     print(dot(hat(bottle_ice.axis), second))
-    return isclose(dot(hat(bottle_ice.axis), second), 1, abs_tol=0.0001)
+    return isclose(abs(dot(hat(bottle_ice.axis), second)), 1, abs_tol=0.0001)
 
 def setup():
     global bottle_ice, flips, t, win
     
     # reset everything
-    bottle_ice.pos = init_pos
     bottle_ice.axis = init_axis
+    bottle_ice.pos = init_pos - bottle.pos
     bottle_ice.tvel = init_tvel
     bottle_ice.avel = init_avel
     bottle_ice.theta = init_theta
@@ -293,7 +293,15 @@ def setSliders(evt): # user inputs
         ice.length = bottle.length * percent_ice
         ice_mass = vol(ice) * ice_density
         ice_com.pos = com_ind(ice)
-        bottle_ice_com.pos = com_pts((bottle_mass, ice_mass), (bottle_com.pos, ice_com.pos))
+        bottle_ice_com_pos = com_pts((bottle_mass, ice_mass), (bottle_com.pos, ice_com.pos))
+
+        bottle.pos = bottle.pos - bottle_ice_com_pos
+        bottle_com.pos = bottle_com.pos - bottle_ice_com_pos
+        ice.pos = ice.pos - bottle_ice_com_pos
+        ice_com.pos = ice_com.pos - bottle_ice_com_pos
+        bottle_ice.pos = bottle_ice.group_to_world(bottle_ice_com_pos)
+        Farrow.pos = bottle.pos + hat(bottle_ice.axis) * bottle.length
+        
     elif evt.id == 'height_slider':
         delta_h = evt.value - dot(init_pos,second)
         height_label.text = '{:.2f} cm\n\n'.format(init_height)
