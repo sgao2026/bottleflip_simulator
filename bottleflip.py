@@ -22,7 +22,7 @@ g = -1000 # cm/s^2
 
 scene.width = 700
 scene.height = 500
-#scene.userzoom = False
+scene.userzoom = False
 scene.camera.pos = vec(-80,bottle_length * 4,160)
 
 t = 0.00
@@ -64,13 +64,14 @@ def com_pts (mass, pos):
 bottle_ice = group()
 
 bottle = cylinder(radius=bottle_radius, length=bottle_length, color=color.white, opacity=0.5, group=bottle_ice)
+bottle.mass = bottle_mass
 bottle.com = sphere(pos=com_ind(bottle), visible=False, group=bottle_ice)
 
 ice = cylinder(pos=bottle.pos, radius=bottle.radius, length=percent_ice * bottle.length, color=color.cyan, opacity=0.5, group=bottle_ice)
-ice_mass = vol(ice) * ice_density
+ice.mass = vol(ice) * ice_density
 ice.com = sphere(pos=com_ind(ice), visible=False, group=bottle_ice)
 
-bottle_ice_com_pos = com_pts((bottle_mass, ice_mass), (bottle_ice.group_to_world(bottle.com.pos), bottle_ice.group_to_world(ice.com.pos)))
+bottle_ice_com_pos = com_pts((bottle.mass, ice.mass), (bottle_ice.group_to_world(bottle.com.pos), bottle_ice.group_to_world(ice.com.pos)))
 
 bottle.pos = bottle.pos - bottle_ice_com_pos
 bottle.com.pos = bottle.com.pos - bottle_ice_com_pos
@@ -167,7 +168,7 @@ def draw_parabola (v_initial,  a_y = g):
         
         xDots.plot(t,x)
         yDots.plot(t,y)
-        tkDots.plot(t, 0.5 * (ice_mass + bottle_mass) * (v_x**2 + v_y**2))        
+        tkDots.plot(t, 0.5 * (ice.mass + bottle.mass) * (v_x**2 + v_y**2))        
         
         t = t + dt
         
@@ -178,20 +179,20 @@ def draw_parabola (v_initial,  a_y = g):
 def flip():
     global t, bottle_ice
         
-    F_g = (ice_mass + bottle_mass) * vec(0,g,0)
+    F_g = (ice.mass + bottle.mass) * vec(0,g,0)
         
     lever_app = bottle_ice.group_to_world(bottle.pos + vec(0,bottle.length,0)) - wrist.pos
         
     T_app = torque(lever_app, Fapp)
-    if T_app == 0: return # not force applied
+    if T_app == 0: return # no force applied
     
-    I_bottle = 0.5 * bottle_mass * bottle_radius**2 + 1/12 * bottle_mass * bottle_length**2 + bottle_mass * mag(bottle_ice.group_to_world(bottle.com.pos) - wrist.pos)**2
-    I_ice = 0.25 * ice_mass * ice.radius**2 + 1/12 * ice_mass * ice.length**2 + ice_mass * mag(bottle_ice.group_to_world(ice.com.pos) - wrist.pos)**2
+    I_bottle = 0.5 * bottle.mass * bottle_radius**2 + 1/12 * bottle.mass * bottle_length**2 + bottle.mass * mag(bottle_ice.group_to_world(bottle.com.pos) - wrist.pos)**2
+    I_ice = 0.25 * ice.mass * ice.radius**2 + 1/12 * ice.mass * ice.length**2 + ice.mass * mag(bottle_ice.group_to_world(ice.com.pos) - wrist.pos)**2
     
     while bottle_ice.theta <= release_angle:
         rate(1 / dt)
         
-        lever_g = bottle_ice.group_to_world(bottle_ice_com.pos) - wrist.pos
+        lever_g = bottle_ice.pos - wrist.pos
         T_g = torque(lever_g, F_g)
         a_a = (T_app + T_g) / (I_bottle + I_ice)
         
@@ -222,15 +223,15 @@ def impact():
         if dot(v, second) < dot(min_pos, second): min_pos = v
     min_pos = vec(dot(min_pos, first), dot(min_pos, second), 0)    
         
-    F_g = (ice_mass + bottle_mass) * vec(0,g,0)
+    F_g = (ice.mass + bottle.mass) * vec(0,g,0)
         
-    I_bottle = 0.5 * bottle_mass * bottle_radius**2 + 1/12 * bottle_mass * bottle_length**2 + bottle_mass * mag(bottle_ice.group_to_world(bottle.com.pos) - min_pos)**2
-    I_ice = 0.25 * ice_mass * ice.radius**2 + 1/12 * ice_mass * ice.length**2 + ice_mass * mag(bottle_ice.group_to_world(ice.com.pos) - min_pos)**2
+    I_bottle = 0.5 * bottle.mass * bottle_radius**2 + 1/12 * bottle.mass * bottle_length**2 + bottle.mass * mag(bottle_ice.group_to_world(bottle.com.pos) - min_pos)**2
+    I_ice = 0.25 * ice.mass * ice.radius**2 + 1/12 * ice.mass * ice.length**2 + ice.mass * mag(bottle_ice.group_to_world(ice.com.pos) - min_pos)**2
     
     while (not full_contact(dot(min_pos, second))):
         rate(1 / dt)
         
-        lever_g = bottle_ice.group_to_world(bottle_ice_com.pos) - min_pos
+        lever_g = bottle_ice.pos - min_pos
         T_g = torque(lever_g, F_g)
         a_a = T_g / (I_bottle + I_ice)
         
@@ -276,24 +277,25 @@ def go(): # runs simulation
     return
 
 def setSliders(evt): # user inputs
-    global Fapp, Farrow, percent_ice, init_height, ice, bottle, bottle_ice, bottle_ice_com, init_pos, wrist, release_angle
+    global Fapp, Farrow, percent_ice, init_height, ice, bottle, bottle_ice, bottle_ice_com, init_pos, wrist, release_angle, dt
     if evt.id == 'Fapp_slider':
-        Fapp = vec(-1 * evt.value,0,0)
+        Fapp = vec(-1 * Fapp_slider.value,0,0)
         Fapp_label.text = '{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5)
-        
+                
         if (mag(Farrow.axis) == 0):
             Farrow.axis = hat(orth(bottle_ice.axis)) * mag(Fapp)*10**-5
         else:
             Farrow.axis = hat(Farrow.axis) * mag(Fapp)*10**-5
+        dt = min(dt, 2 / (mag(Fapp) * 10**-4))
     elif evt.id == 'ice_slider':
-        percent_ice = evt.value
-        ice_label.text = '{:.0f}%\n\n'.format(percent_ice * 100)
+        percent_ice = ice_slider.value
+        ice_label.text = '{:.0f}%\n\n'.format(ice_slider.value * 100)
         
         ice.axis = bottle_ice.axis
         ice.length = bottle.length * percent_ice
-        ice_mass = vol(ice) * ice_density
+        ice.mass = vol(ice) * ice_density
         ice.com.pos = com_ind(ice)
-        bottle_ice_com_pos = com_pts((bottle_mass, ice_mass), (bottle.com.pos, ice.com.pos))
+        bottle_ice_com_pos = com_pts((bottle.mass, ice.mass), (bottle.com.pos, ice.com.pos))
 
         bottle.pos = bottle.pos - bottle_ice_com_pos
         bottle.com.pos = bottle.com.pos - bottle_ice_com_pos
@@ -303,8 +305,8 @@ def setSliders(evt): # user inputs
         Farrow.pos = bottle.pos + hat(bottle_ice.axis) * bottle.length
         
     elif evt.id == 'height_slider':
-        delta_h = evt.value - dot(init_pos,second)
-        height_label.text = '{:.2f} cm\n\n'.format(init_height)
+        delta_h = height_slider.value - dot(init_pos,second)
+        height_label.text = '{:.2f} cm\n\n'.format(height_slider.value)
         
         init_pos = init_pos + vec(0,delta_h,0)
         wrist.pos = wrist.pos + vec(0,delta_h,0)
@@ -312,11 +314,30 @@ def setSliders(evt): # user inputs
         
         init_height = evt.value
     elif evt.id == 'angle_slider':
-        release_angle = evt.value
-        angle_label.text = '{:.2f} radians\n\n'.format(angle_slider.value)#     print(str(evt.id) + " " + str(Tapp))
+        release_angle = angle_slider.value
+        angle_label.text = '{:.2f} radians\n\n'.format(angle_slider.value)
+
+def randomizeSliders(evt):
+    evt.id = 'Fapp_slider'
+    Fapp_slider.value = round(random() * 500000) * 10
+    setSliders(evt)
+    
+    evt.id = 'ice_slider'
+    ice_slider.value = round(random(), 2)
+    setSliders(evt)
+    
+    evt.id = 'height_slider'
+    height_slider.value = round(random() * bottle_length * 2, 1)
+    setSliders(evt)
+    
+    evt.id = 'angle_slider'
+    angle_slider.value = round(random() * pi/2, 1)
+    
+    setup()
 
 # sliders + labels
 reset = button(bind=setup, text='Reset', pos=scene.title_anchor)
+randomize = button(bind=randomizeSliders, text='Randomize', pos=scene.title_anchor)
 run = button(bind=go, text='Run', pos=scene.title_anchor)
 
 scene.caption = "Simulation Properties"
