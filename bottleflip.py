@@ -32,9 +32,9 @@ dt = 0.005
 flips = 0
 trail = []
 
-Fapp = vec(-5000000,0,0) # user determined torque applied
+Fapp = vec(-1500000,0,0) # user determined torque applied
 dt = min(dt, 1.75 / (mag(Fapp) * 10**-4))
-percent_fill = 0.1 # percentage of total volume of the bottle
+percent_fill = 1 # percentage of total volume of the bottle
 init_pos = vec(40,0,0) # coordinate of bottle
 release_angle = pi/2
 
@@ -211,7 +211,7 @@ def flip():
     I_bottle = bottle.r_mass + bottle.mass * mag(bottle_ice.group_to_world(bottle.com.pos) - wrist.pos)**2
     I_ice = ice.r_mass + ice.mass * mag(bottle_ice.group_to_world(ice.com.pos) - wrist.pos)**2
     
-    while bottle_ice.theta <= release_angle:
+    while bottle_ice.theta <= release_angle or bottle_ice.avel == 0:
         rate(1 / dt)
         
         lever_g = bottle_ice.pos - wrist.pos
@@ -326,7 +326,6 @@ def setSliders(evt): # user inputs
         percent_fill = fill_slider.value
         fill_label.text = '{:.0f}%\n\n'.format(fill_slider.value * 100)
         
-        ice.axis = bottle_ice.axis
         ice.length = bottle.length * percent_fill
         ice.mass = vol(ice) * ice_density
         ice.r_mass = 0.25 * ice.mass * ice.radius**2 + 1/12 * ice.mass * ice.length**2
@@ -355,19 +354,19 @@ def setSliders(evt): # user inputs
 
 def randomizeSliders(evt):
     evt.id = 'Fapp_slider'
-    Fapp_slider.value = round(random() * 500000) * 10
+    Fapp_slider.value = round(random() * (Fapp_slider.max - Fapp_slider.min) / 10) * 10 + Fapp_slider.min
     setSliders(evt)
     
     evt.id = 'fill_slider'
-    fill_slider.value = round(random(), 2)
+    fill_slider.value = round(random() * (fill_slider.max - fill_slider.min) + fill_slider.min, 2)
     setSliders(evt)
     
     evt.id = 'height_slider'
-    height_slider.value = round(random() * bottle_length * 2, 1)
+    height_slider.value = round(random() * height_slider.max, 1)
     setSliders(evt)
     
     evt.id = 'angle_slider'
-    angle_slider.value = round(random() * pi/2, 1)
+    angle_slider.value = round(random() * angle_slider.max, 1)
     
     setup()
 
@@ -393,11 +392,11 @@ flips_label = wtext(text=f'Flip Counter: {flips}')
 wtext(text='\n\n')
 
 scene.append_to_caption('Select applied force\n')
-Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=0, value=mag(Fapp), max=5000000, step=10)
+Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=1500000, value=mag(Fapp), max=5000000, step=10)
 Fapp_label = wtext(text='{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5))
 
 scene.append_to_caption('Select amount filled\n')
-fill_slider = slider(id='fill_slider', bind=setSliders, min=0, value=percent_fill, max=1, step=0.01)
+fill_slider = slider(id='fill_slider', bind=setSliders, min=0.01, value=percent_fill, max=1, step=0.01)
 fill_label = wtext(text='{:.0f}%\n\n'.format(fill_slider.value * 100))
 
 scene.append_to_caption('Select height of release\n')
