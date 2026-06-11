@@ -185,7 +185,7 @@ def draw_parabola (v_initial,  a_y = g):
         bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
         if dot(bottle_ice.pos, second) > 165:
             scene.camera.pos = scene.camera.pos + vec(0, d_y, 0)
-        if dot(bottle_ice.pos, first) < -390:
+        if dot(bottle_ice.pos, first) < -380:
             scene.camera.pos = scene.camera.pos + vec(d_x, 0, 0)
         
         xDots.plot(t,dot(bottle_ice.pos, first))
@@ -378,8 +378,9 @@ def toggle_sliders():
     height_slider.disabled = not height_slider.disabled
     angle_slider.disabled = not angle_slider.disabled
     
-    # disable randomize
+    # disable randomize + reset
     randomize.disabled = not randomize.disabled
+    reset.disabled = not reset.disabled
 
 # sliders + labels
 reset = button(bind=setup, text='Reset', pos=scene.title_anchor)
