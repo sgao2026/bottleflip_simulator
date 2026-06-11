@@ -21,10 +21,11 @@ water_density = 1 # g/cm^3
 
 g = -1000 # cm/s^2
 
-scene.width = 700
+scene.width = 1200
 scene.height = 500
 scene.userzoom = False
-scene.camera.pos = vec(-80,bottle_length * 4,160)
+scene.resizable = False
+scene.camera.pos = vec(-0.14 * scene.width, 0.15 * scene.height,160)
 
 t = 0.00
 dt = 0.005
@@ -32,7 +33,7 @@ flips = 0
 trail = []
 
 Fapp = vec(-5000000,0,0) # user determined torque applied
-dt = min(dt, 2 / (mag(Fapp) * 10**-4))
+dt = min(dt, 1.75 / (mag(Fapp) * 10**-4))
 percent_fill = 0.1 # percentage of total volume of the bottle
 init_pos = vec(40,0,0) # coordinate of bottle
 release_angle = pi/2
@@ -74,7 +75,6 @@ ice.mass = vol(ice) * ice_density
 ice.r_mass = 0.25 * ice.mass * ice.radius**2 + 1/12 * ice.mass * ice.length**2
 ice.com = sphere(pos=com_ind(ice), visible=False, group=bottle_ice)
 
-
 bottle_ice_com_pos = com_pts((bottle.mass, ice.mass), (bottle_ice.group_to_world(bottle.com.pos), bottle_ice.group_to_world(ice.com.pos)))
 
 bottle.pos = bottle.pos - bottle_ice_com_pos
@@ -98,8 +98,8 @@ init_avel = bottle_ice.avel
 init_theta = bottle_ice.theta
 
 # win/lose screen
-win = text(pos=vec(-50,50,0), height=10, text='Success!', align='center', color=color.green, visible=False)
-lose = text(pos=vec(-50,50,0), height=10, text='Fail!', align='center', color=color.red, visible=False)
+win = text(pos=vec(dot(scene.camera.pos, first), dot(scene.camera.pos, second), 0), height=20, text='Success!', align='center', color=color.green, visible=False)
+lose = text(pos=vec(dot(scene.camera.pos, first), dot(scene.camera.pos, second), 0), height=20, text='Fail!', align='center', color=color.red, visible=False)
 
 def get_contact_points():
     result = []
@@ -118,7 +118,7 @@ def full_contact(ground):
     return contact_count == 4
 
 def check_upright():
-    return isclose(abs(dot(hat(bottle_ice.axis), second)), 1, rel_tol=0.001, abs_tol=0.0001)
+    return isclose(abs(dot(hat(bottle_ice.axis), second)), 1, rel_tol=dt, abs_tol=0.0001)
 
 def setup():
     global bottle_ice, flips, t, win
@@ -141,6 +141,9 @@ def setup():
     # hide win screen
     win.visible = False
     lose.visible = False
+    
+    # allow run
+    run.disabled = False
     
 def draw_parabola (v_initial,  a_y = g):
     global t, bottle_ice, flips
@@ -180,14 +183,13 @@ def draw_parabola (v_initial,  a_y = g):
     return
 
 def flip():
-    global t, bottle_ice
+    global t, bottle_ice, Farrow
         
     F_g = (ice.mass + bottle.mass) * vec(0,g,0)
         
     lever_app = bottle_ice.group_to_world(bottle.pos + vec(0,bottle.length,0)) - wrist.pos
         
     T_app = torque(lever_app, Fapp)
-    if T_app == 0: return # no force applied
     
     I_bottle = bottle.r_mass + bottle.mass * mag(bottle_ice.group_to_world(bottle.com.pos) - wrist.pos)**2
     I_ice = ice.r_mass + ice.mass * mag(bottle_ice.group_to_world(ice.com.pos) - wrist.pos)**2
@@ -215,6 +217,7 @@ def flip():
         
         # trail
         trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
+    Farrow.visible = False
 
 def impact():
     global t, bottle_ice
@@ -259,7 +262,9 @@ def impact():
 def go(): # runs simulation
     global bottle_ice, run, win, lose
     if (mag(Fapp) == 0): return
-    run.text = 'Pause'
+
+    toggle_sliders()
+    run.disabled = True
     
     # flip
     flip()
@@ -276,7 +281,7 @@ def go(): # runs simulation
     else:
         lose.visible = True
     
-    run.text = 'Run'
+    toggle_sliders()
     return
 
 def setSliders(evt): # user inputs
@@ -284,7 +289,8 @@ def setSliders(evt): # user inputs
     if evt.id == 'Fapp_slider':
         Fapp = vec(-1 * Fapp_slider.value,0,0)
         Fapp_label.text = '{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5)
-                
+        
+        Farrow.visible = True
         if (mag(Farrow.axis) == 0):
             Farrow.axis = hat(orth(bottle_ice.axis)) * mag(Fapp)*10**-5
         else:
@@ -338,6 +344,16 @@ def randomizeSliders(evt):
     angle_slider.value = round(random() * pi/2, 1)
     
     setup()
+
+def toggle_sliders():
+    # disable sliders
+    Fapp_slider.disabled = not Fapp_slider.disabled
+    fill_slider.disabled = not fill_slider.disabled
+    height_slider.disabled = not height_slider.disabled
+    angle_slider.disabled = not angle_slider.disabled
+    
+    # disable randomize
+    randomize.disabled = not randomize.disabled
 
 # sliders + labels
 reset = button(bind=setup, text='Reset', pos=scene.title_anchor)
