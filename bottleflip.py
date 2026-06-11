@@ -124,6 +124,9 @@ def check_upright():
 
 def setup():
     global bottle_ice, flips, t, win
+    # reset camera
+    scene.camera.pos = vec(-0.14 * scene.width, 0.15 * scene.height,160)
+    
     instructions.visible = True
     # reset everything
     bottle_ice.axis = init_axis
@@ -180,6 +183,8 @@ def draw_parabola (v_initial,  a_y = g):
         d_y = v_y * dt
         
         bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
+        if dot(bottle_ice.pos, second) > 160:
+            scene.camera.pos = scene.camera.pos + vec(0, d_y, 0)
         
         xDots.plot(t,dot(bottle_ice.pos, first))
         yDots.plot(t,dot(bottle_ice.pos, second))
