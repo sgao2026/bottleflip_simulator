@@ -314,7 +314,7 @@ def setSliders(evt): # user inputs
     global Fapp, Farrow, percent_fill, init_height, ice, bottle, bottle_ice, init_pos, wrist, release_angle, dt
     if evt.id == 'Fapp_slider':
         Fapp = vec(-1 * Fapp_slider.value,0,0)
-        Fapp_label.text = '{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5)
+        Fapp_label.text = '{:.3f} kN\n\n'.format(Fapp_slider.value * 10**-5)
         
         Farrow.visible = True
         if (mag(Farrow.axis) == 0):
@@ -354,7 +354,7 @@ def setSliders(evt): # user inputs
 
 def randomizeSliders(evt):
     evt.id = 'Fapp_slider'
-    Fapp_slider.value = round(random() * (Fapp_slider.max - Fapp_slider.min) / 10) * 10 + Fapp_slider.min
+    Fapp_slider.value = round(random() * (Fapp_slider.max - Fapp_slider.min)) + Fapp_slider.min
     setSliders(evt)
     
     evt.id = 'fill_slider'
@@ -392,8 +392,8 @@ flips_label = wtext(text=f'Flip Counter: {flips}')
 wtext(text='\n\n')
 
 scene.append_to_caption('Select applied force\n')
-Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=1500000, value=mag(Fapp), max=5000000, step=10)
-Fapp_label = wtext(text='{:.2f} kN\n\n'.format(Fapp_slider.value * 10**-5))
+Fapp_slider = slider(id='Fapp_slider', bind=setSliders, min=1500000, value=mag(Fapp), max=5000000, step=1)
+Fapp_label = wtext(text='{:.3f} kN\n\n'.format(Fapp_slider.value * 10**-5))
 
 scene.append_to_caption('Select amount filled\n')
 fill_slider = slider(id='fill_slider', bind=setSliders, min=0.01, value=percent_fill, max=1, step=0.01)
