@@ -83,6 +83,8 @@ ice.pos = ice.pos - bottle_ice_com_pos
 ice.com.pos = ice.com.pos - bottle_ice_com_pos
 
 bottle_ice.com = sphere(color=color.red, make_trail=False, group=bottle_ice)
+bottle_ice.mass = bottle.mass + ice.mass
+bottle_ice.r_mass = bottle.r_mass + bottle.mass * mag(bottle.com.pos)**2 + ice.r_mass + ice.mass * mag(ice.com.pos)
 
 bottle_ice.tvel = vec(0,0,0)
 bottle_ice.avel = 0
@@ -157,15 +159,14 @@ def draw_parabola (v_initial,  a_y = g):
     v_x = dot(v_initial, first)
     v_y = dot(v_initial, second)
     
-    x = dot(bottle_ice.group_to_world(bottle.pos), first)
-    y = dot(bottle_ice.group_to_world(bottle.pos), second)
-    
     d_theta = 0
     while len(get_contact_points()) == 0:
         rate(1 / dt)
         # rotate
-        bottle_ice.rotate(axis=-1*third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
+        bottle_ice.rotate(axis=-1 * third, angle=bottle_ice.avel * dt, origin=bottle_ice.pos)
         d_theta = d_theta + bottle_ice.avel * dt
+        bottle_ice.theta = (d_theta + bottle_ice.theta) % (2 * pi)
+        
         if d_theta > 2*pi:
             d_theta = d_theta % 2*pi
             flips = flips + 1
@@ -174,14 +175,16 @@ def draw_parabola (v_initial,  a_y = g):
         d_x = v_x * dt
         
         v_y = v_y + a_y * dt
+        bottle_ice.tvel = vec(v_x, v_y, 0)
+        
         d_y = v_y * dt
-        y = y + d_y
         
         bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
         
-        xDots.plot(t,x)
-        yDots.plot(t,y)
-        tkDots.plot(t, 0.5 * (ice.mass + bottle.mass) * (v_x**2 + v_y**2))        
+        xDots.plot(t,dot(bottle_ice.pos, first))
+        yDots.plot(t,dot(bottle_ice.pos, second))
+        tkDots.plot(t, 0.5 * bottle_ice.mass * mag(bottle_ice.tvel)**2)
+        akDots.plot(t, 0.5 * bottle_ice.r_mass * bottle_ice.avel**2)
         
         t = t + dt
         
@@ -218,6 +221,9 @@ def flip():
 #        sphere(pos=bottle_ice.pos, color=color.purple)
         bottle_ice.theta = bottle_ice.theta + d_theta
         
+        xDots.plot(t, dot(bottle_ice.pos, first))
+        yDots.plot(t, dot(bottle_ice.pos, second))
+        tkDots.plot(t, 0.5 * bottle_ice.mass * mag(bottle_ice.tvel)**2)
         akDots.plot(t, 0.5 * (I_bottle + I_ice) * bottle_ice.avel**2)
         
         t = t + dt
@@ -258,6 +264,9 @@ def impact():
 #        sphere(pos=bottle_ice.pos, color=color.purple)
         bottle_ice.theta = bottle_ice.theta + d_theta
         
+        xDots.plot(t, dot(bottle_ice.pos, first))
+        yDots.plot(t, dot(bottle_ice.pos, second))
+        tkDots.plot(t, 0.5 * bottle_ice.mass * mag(bottle_ice.tvel)**2)
         akDots.plot(t, 0.5 * (I_bottle + I_ice) * bottle_ice.avel**2)
         
         t = t + dt
