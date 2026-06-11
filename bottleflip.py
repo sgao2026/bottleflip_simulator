@@ -185,6 +185,8 @@ def draw_parabola (v_initial,  a_y = g):
         bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
         if dot(bottle_ice.pos, second) > 160:
             scene.camera.pos = scene.camera.pos + vec(0, d_y, 0)
+        if dot(bottle_ice.pos, first) < -380:
+            scene.camera.pos = scene.camera.pos + vec(d_x, 0, 0)
         
         xDots.plot(t,dot(bottle_ice.pos, first))
         yDots.plot(t,dot(bottle_ice.pos, second))
@@ -304,6 +306,7 @@ def go(): # runs simulation
         lose.visible = True
     
     toggle_sliders()
+    g_info.pos = vec(dot(scene.camera.pos, first), 160, 0)
     g_info.visible = True
     return
 
