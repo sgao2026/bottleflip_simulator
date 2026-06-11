@@ -409,16 +409,16 @@ angle_slider = slider(id='angle_slider', bind=setSliders, min=0, value=release_a
 angle_label = wtext(text='{:.2f} radians\n\n'.format(angle_slider.value))
 
 # graphs
-x_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("X Position"), align='left')
+x_t = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("X Position (cm)"), align='left')
 xDots=gdots(color=color.red, graph=x_t)
 
-y_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Y Position"), align='left')
+y_t = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("Y Position (cm)"), align='left')
 yDots=gdots(color=color.red, graph=y_t)
 
-ak_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Angular KE"), align='left')
+ak_t = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("Angular KE (J)"), align='left')
 akDots=gdots(color=color.green, graph=ak_t)
 
-tk_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Translational KE"), align='left')
+tk_t = graph(width=350, height=250, xtitle=("Time (s)"), ytitle=("Translational KE (J)"), align='left')
 tkDots=gdots(color=color.green, graph=tk_t)
 
 # info
