@@ -1,5 +1,8 @@
 Web VPython 3.2
 
+instructions = label(pos = vec(-150,170,0), text='Instructions: Once you adjust your parameters \n using the sliders (or the Randomize button), \n click Run to watch your bottle flip!\n When you are done, click Reset, and repeat.', box=True, color=color.black, background=color.white)
+g_info = label(pos = vec(-125,170,0), text='Good! Now, take a look at the graphs below.\nYou can see the angular kinetic energy of the bottle,\nthe x position and y positions of the bottle, and the translational \nkinetic energy of the bottle during its flip.', box = True, color=color.black, background=color.white)
+            
 first = vec(1,0,0)
 second = vec(0,1,0)
 third = vec(0,0,1)
@@ -122,7 +125,7 @@ def check_upright():
 
 def setup():
     global bottle_ice, flips, t, win
-    
+    instructions.visible = True
     # reset everything
     bottle_ice.axis = init_axis
     bottle_ice.pos = init_pos - bottle.pos
@@ -147,6 +150,7 @@ def setup():
     # hide win screen
     win.visible = False
     lose.visible = False
+    g_info.visible = False
     
 def draw_parabola (v_initial,  a_y = g):
     global t, bottle_ice, flips
@@ -261,12 +265,12 @@ def impact():
         # trail
         trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
     return
-    
+
 def go(): # runs simulation
     global bottle_ice, run, win, lose
     if (mag(Fapp) == 0): return
     run.text = 'Pause'
-    
+    instructions.visible = False
     # flip
     flip()
     
@@ -283,6 +287,7 @@ def go(): # runs simulation
         lose.visible = True
     
     run.text = 'Run'
+    g_info.visible = True
     return
 
 def setSliders(evt): # user inputs
