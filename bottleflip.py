@@ -132,6 +132,12 @@ def setup():
     flips = 0
     t = 0
     
+    #reset graphs
+    xDots.delete()
+    yDots.delete()
+    tkDots.delete() 
+    akDots.delete()
+    
     # clear trail
     for p in trail:
         p.visible = False
