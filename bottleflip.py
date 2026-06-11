@@ -183,9 +183,9 @@ def draw_parabola (v_initial,  a_y = g):
         d_y = v_y * dt
         
         bottle_ice.pos = bottle_ice.pos + vec(d_x,d_y,0)
-        if dot(bottle_ice.pos, second) > 160:
+        if dot(bottle_ice.pos, second) > 165:
             scene.camera.pos = scene.camera.pos + vec(0, d_y, 0)
-        if dot(bottle_ice.pos, first) < -380:
+        if dot(bottle_ice.pos, first) < -390:
             scene.camera.pos = scene.camera.pos + vec(d_x, 0, 0)
         
         xDots.plot(t,dot(bottle_ice.pos, first))
