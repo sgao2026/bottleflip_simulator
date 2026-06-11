@@ -404,7 +404,7 @@ tk_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Translational KE")
 tkDots=gdots(color=color.green, graph=tk_t)
 
 # info
-instructions = label(pos=vec(dot(scene.camera.pos, first),170,0), text='Instructions: Once you adjust your parameters \n using the sliders (or the Randomize button), \n click Run to watch your bottle flip!\n When you are done, click Reset, and repeat.', box=True, color=color.black, background=color.white)
-g_info = label(pos=vec(dot(scene.camera.pos, first),170,0), text='Good! Now, take a look at the graphs below.\nYou can see the angular kinetic energy of the bottle,\nthe x position and y positions of the bottle, and the translational \nkinetic energy of the bottle during its flip.', box = True, color=color.black, background=color.white)
+instructions = label(pos=vec(dot(scene.camera.pos, first),160,0), text='Instructions: Once you adjust your parameters \n using the sliders (or the Randomize button), \n click Run to watch your bottle flip!\n When you are done, click Reset, and repeat.', box=True, color=color.black, background=color.white)
+g_info = label(pos=vec(dot(scene.camera.pos, first),160,0), text='Good! Now, take a look at the graphs below.\nYou can see the angular kinetic energy of the bottle,\nthe x position and y positions of the bottle, and the translational \nkinetic energy of the bottle during its flip.', box = True, color=color.black, background=color.white)
 
 setup()
