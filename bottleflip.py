@@ -1,5 +1,5 @@
 Web VPython 3.2
-
+            
 first = vec(1,0,0)
 second = vec(0,1,0)
 third = vec(0,0,1)
@@ -122,7 +122,7 @@ def check_upright():
 
 def setup():
     global bottle_ice, flips, t, win
-    
+    instructions.visible = True
     # reset everything
     bottle_ice.axis = init_axis
     bottle_ice.pos = init_pos - bottle.pos
@@ -131,6 +131,12 @@ def setup():
     bottle_ice.theta = init_theta
     flips = 0
     t = 0
+    
+    #reset graphs
+    xDots.delete()
+    yDots.delete()
+    tkDots.delete() 
+    akDots.delete()
     
     # clear trail
     for p in trail:
@@ -141,6 +147,7 @@ def setup():
     # hide win screen
     win.visible = False
     lose.visible = False
+    g_info.visible = False
     
     # allow run
     run.disabled = False
@@ -258,7 +265,7 @@ def impact():
         # trail
         trail.append(sphere(pos=bottle_ice.pos, color=ice.color))
     return
-    
+
 def go(): # runs simulation
     global bottle_ice, run, win, lose
     if (mag(Fapp) == 0): return
@@ -266,6 +273,7 @@ def go(): # runs simulation
     toggle_sliders()
     run.disabled = True
     
+    instructions.visible = False
     # flip
     flip()
     
@@ -282,6 +290,7 @@ def go(): # runs simulation
         lose.visible = True
     
     toggle_sliders()
+    g_info.visible = True
     return
 
 def setSliders(evt): # user inputs
@@ -393,5 +402,9 @@ akDots=gdots(color=color.green, graph=ak_t)
 
 tk_t = graph(width=350, height=250, xtitle=("Time"), ytitle=("Translational KE"), align='left')
 tkDots=gdots(color=color.green, graph=tk_t)
+
+# info
+instructions = label(pos=vec(dot(scene.camera.pos, first),170,0), text='Instructions: Once you adjust your parameters \n using the sliders (or the Randomize button), \n click Run to watch your bottle flip!\n When you are done, click Reset, and repeat.', box=True, color=color.black, background=color.white)
+g_info = label(pos=vec(dot(scene.camera.pos, first),170,0), text='Good! Now, take a look at the graphs below.\nYou can see the angular kinetic energy of the bottle,\nthe x position and y positions of the bottle, and the translational \nkinetic energy of the bottle during its flip.', box = True, color=color.black, background=color.white)
 
 setup()
