@@ -39,7 +39,9 @@ init_pos = vec(40,0,0) # coordinate of bottle
 release_angle = pi/2
 
 wrist = sphere(pos=init_pos + vec(0,bottle_length + 7,0), radius = 0.5)
-origin = sphere(color=color.yellow)
+
+# ground
+ground = box(pos=vec(0, -0.99*scene.height, 0), length=scene.width*10, height=scene.height*2, color=color.green, opacity=0.5)
 
 def orth(u): # rotate pi/2 ccw
     return cross(u, -1 * third)
